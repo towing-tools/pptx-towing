@@ -1,0 +1,17 @@
+# OS
+.DS_Store
+
+# Dependencies
+node_modules/
+
+# Environment
+.env
+
+# Output files
+test_output/
+
+# Notes (internal)
+変更すべき点.md
+
+# Template files (confidential - download from Google Drive)
+assets/*.pptx

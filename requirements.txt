@@ -1,0 +1,15 @@
+# System Requirements (macOS)
+# Install Homebrew first: /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# System Tools
+# brew install poppler
+# brew install --cask libreoffice
+
+# Node.js Dependencies (npm install)
+playwright
+pptxgenjs
+sharp
+
+# Python Dependencies (pip install)
+python-pptx (if using OOXML scripts)
+defusedxml

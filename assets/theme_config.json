@@ -1,0 +1,69 @@
+{
+  "meta": {
+    "version": "2.1",
+    "updated": "2026-01-15",
+    "description": "Official TOWING slide design configuration v2. Title style updated."
+  },
+  "palette": {
+    "primary": {
+      "main": "#f4f0e8",
+      "secondary": "#ab955f"
+    },
+    "functional": {
+      "success": "#648651",
+      "warning": "#c46668",
+      "text": "#333333",
+      "text_inverse": "#ffffff",
+      "background": "#fcfcf9"
+    }
+  },
+  "typography": {
+    "font_family": {
+      "base": "Arial, \"MS Gothic\", sans-serif",
+      "heading": "Arial, \"MS Gothic\", sans-serif"
+    },
+    "sizes": {
+      "cover_title": "32pt",
+      "cover_subtitle": "18pt",
+      "slide_title": "20pt",
+      "section_header": "16pt",
+      "body": "12.5pt",
+      "small": "12pt"
+    },
+    "line_height": {
+      "base": "1.3",
+      "heading": "1.2"
+    }
+  },
+  "layout": {
+    "slide": {
+      "width_pt": 720,
+      "height_pt": 405
+    },
+    "header": {
+      "height_pt": 40,
+      "margin_top_pt": 20,
+      "border_bottom_width_pt": 2,
+      "title": {
+        "x_pt": 14.17,
+        "y_pt": 7.09
+      }
+    },
+    "content": {
+      "x_pt": 8.5,
+      "y_pt": 39.7,
+      "w_pt": 700.2,
+      "h_pt": 334.5,
+      "margin_bottom_pt": 30
+    }
+  },
+  "components": {
+    "box": {
+      "background_color": "#ffffff",
+      "padding_pt": 10,
+      "margin_bottom_pt": 10,
+      "border_left_width_pt": 5,
+      "shadow": "2px 2px 5px rgba(0,0,0,0.1)"
+    }
+  }
+}
