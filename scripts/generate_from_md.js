@@ -35,7 +35,12 @@ function generateCSS() {
         font-size: ${t.sizes.slide_title};
         font-weight: bold;
         color: ${p.primary.main};
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: calc(100% - ${l.header.title.x_pt * 2}pt);
     }
+    /* 重要: タイトル色は #f4f0e8 固定。変更禁止 */
     
     .content {
         position: absolute;
@@ -70,11 +75,68 @@ function generateCSS() {
         box-shadow: ${c.box.shadow};
         width: 100%;
         box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        gap: ${c.box.inner_gap_pt || 8}pt;
     }
+    .box > * { margin: 0; }
     .box.highlight { border-left-color: ${p.primary.secondary}; }
     .box.warning { border-left-color: ${p.functional.warning}; }
-    .box.primary { background-color: ${p.primary.main}; color: ${p.functional.text_inverse}; border: none; }
-    .box.primary h2 { color: ${p.primary.secondary}; }
+    .box.primary { background-color: ${p.functional.success}; color: ${p.primary.main}; border: none; }
+    .box.primary h2 { color: ${p.primary.main}; }
+    .box.primary strong { color: ${p.primary.main}; text-decoration: underline; }
+    /* 注意: .box.success と .box.green は使用禁止（見た目が悪いため削除済み） */
+
+    /* KPI Dashboard styles */
+    .box.kpi { text-align: center; padding: 16pt; }
+    .box.kpi .number { font-size: 28pt; font-weight: bold; color: #4A4A3E; }
+    .box.kpi .label { font-size: 11pt; color: #A3A099; margin-bottom: 4pt; }
+    .box.kpi .badge { background-color: #1E8E3E; color: white; padding: 3pt 8pt; font-size: 10pt; display: inline-block; margin-top: 4pt; }
+
+    /* Comparison table styles */
+    .box.dark { background-color: #4A4A3E; color: ${p.functional.text_inverse}; border: none; }
+    .box.gold { background-color: ${p.primary.secondary}; color: ${p.functional.text_inverse}; border: none; }
+    .box.dark-gold { background-color: #766741; color: ${p.functional.text_inverse}; border: none; }
+    .box.light-gray { background-color: #EFEEEB; color: ${p.functional.text}; border: none; }
+    .box.gray { background-color: #A3A099; color: ${p.functional.text}; border: none; }
+
+    /* Outline styles - DIVベースでPowerPoint形状に変換 */
+    .outline-container {
+        display: flex;
+        flex-direction: column;
+        gap: 12pt;
+    }
+    .outline-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 12pt;
+    }
+    .outline-number {
+        width: 28pt;
+        height: 28pt;
+        background-color: ${p.primary.secondary};
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    .outline-number p {
+        color: ${p.primary.main};
+        font-weight: bold;
+        font-size: 14pt;
+        text-align: center;
+        margin: 0;
+    }
+    .outline-text {
+        flex: 1;
+        padding-top: 4pt;
+    }
+    .outline-text p {
+        color: ${p.functional.text};
+        font-size: ${t.sizes.body};
+        line-height: 1.4;
+        margin: 0;
+    }
     
     h2 {
         font-size: ${t.sizes.section_header};
@@ -83,20 +145,98 @@ function generateCSS() {
         font-family: ${t.font_family.heading};
         line-height: 1.2;
     }
-    
+
+    h3 {
+        font-size: ${t.sizes.body};
+        font-weight: bold;
+        color: ${p.primary.secondary};
+        margin-bottom: 4pt;
+        font-family: ${t.font_family.heading};
+        line-height: 1.2;
+    }
+
     ul { padding-left: 1.2em; }
     li { margin-bottom: 3pt; }
-    strong { color: ${p.functional.warning}; font-weight: bold; }
+    strong { color: ${p.functional.success}; font-weight: bold; }
     blockquote { border-left: 3pt solid #ccc; padding-left: 10pt; font-style: italic; color: #666; }
+
+    /* Table styles - 表のスタイル */
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: ${t.sizes.body};
+        margin: 8pt 0;
+    }
+    table th {
+        background-color: ${p.primary.secondary};
+        color: ${p.primary.main};
+        font-weight: bold;
+        padding: 10pt 12pt;
+        text-align: left;
+        border: none;
+    }
+    table td {
+        padding: 8pt 12pt;
+        border-bottom: 1pt solid #E5E5E5;
+        vertical-align: top;
+    }
+    table tr:nth-child(even) td {
+        background-color: #F9F9F7;
+    }
+    table tr:hover td {
+        background-color: #F4F0E8;
+    }
+    /* 表内の強調セル */
+    table td.highlight {
+        background-color: ${p.functional.success};
+        color: ${p.primary.main};
+        font-weight: bold;
+    }
+    table td.gold {
+        background-color: ${p.primary.secondary};
+        color: ${p.primary.main};
+        font-weight: bold;
+    }
     `;
 }
 
 function parseMarkdown(mdText) {
-    const slides = mdText.split(/\n---\n/);
+    // BOMを除去（存在する場合）
+    if (mdText.charCodeAt(0) === 0xFEFF) {
+        mdText = mdText.slice(1);
+    }
+
+    // 改行を統一（CRLFをLFに）
+    mdText = mdText.replace(/\r\n/g, '\n');
+
+    // ファイル先頭のYAMLフロントマター（***で囲まれた部分）を除去
+    // 先頭の空白も考慮
+    let cleanedMdText = mdText.replace(/^\s*\*\*\*[\s\S]*?\*\*\*\s*/, '');
+
+    // ファイル先頭の---区切りも除去（YAML除去後に残っている場合）
+    cleanedMdText = cleanedMdText.replace(/^\s*---\s*\n?/, '');
+
+    // スライド分割: まず \n---\n で試みる
+    let slides = cleanedMdText.split(/\n---\n/);
+
+    // ---区切りがない場合（スライドが1つだけで、複数のYAMLブロックがある場合）
+    // ***slide_number で始まるYAMLブロックをスライド区切りとして使用
+    if (slides.length === 1 && cleanedMdText.includes('slide_number')) {
+        // slide_number を含む *** ブロックの開始位置で分割
+        const splitSlides = cleanedMdText.split(/\n(?=\*\*\*\s*\nslide_number)/);
+        if (splitSlides.length > 1) {
+            slides = splitSlides;
+        }
+    }
 
     return slides.map(slideMd => {
+        // 先頭・末尾の空白を除去
+        let cleanedSlideMd = slideMd.trim();
+        // 各スライド先頭のYAMLメタデータ（***で囲まれた部分）を除去
+        cleanedSlideMd = cleanedSlideMd.replace(/^\*\*\*[\s\S]*?\*\*\*\s*/, '');
+
         let title = '';
-        const lines = slideMd.split('\n');
+        const lines = cleanedSlideMd.split('\n');
         const htmlLines = [];
         const stack = []; // Track open containers: 'columns', 'column', 'box'
         let currentRatios = [1, 1];
@@ -106,15 +246,29 @@ function parseMarkdown(mdText) {
             let trimmed = lines[i].trim();
             if (!trimmed && !stack.includes('column')) continue;
 
+            // h1: スライドタイトル
             if (trimmed.startsWith('# ')) {
                 title = trimmed.substring(2);
                 continue;
             }
 
-            // Start Columns container
-            const colMatch = trimmed.match(/^::: columns *(\d+)\/(\d+)/);
+            // h3: サブセクションヘッダー（ボックス内など）
+            if (trimmed.startsWith('### ')) {
+                let content = trimmed.substring(4).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+                htmlLines.push(`<h3>${content}</h3>`);
+                continue;
+            }
+
+            // Start Columns container (supports 2 or 3 columns)
+            const colMatch = trimmed.match(/^::: columns *(\d+)\/(\d+)(?:\/(\d+))?/);
             if (colMatch) {
-                currentRatios = [parseInt(colMatch[1]), parseInt(colMatch[2])];
+                if (colMatch[3]) {
+                    // 3-column layout
+                    currentRatios = [parseInt(colMatch[1]), parseInt(colMatch[2]), parseInt(colMatch[3])];
+                } else {
+                    // 2-column layout
+                    currentRatios = [parseInt(colMatch[1]), parseInt(colMatch[2])];
+                }
                 columnIndex = 0;
                 htmlLines.push('<div class="columns">');
                 stack.push('columns');
@@ -129,15 +283,15 @@ function parseMarkdown(mdText) {
                     stack.pop();
                     columnIndex++;
                 }
-                // Start new column
-                const ratio = columnIndex === 0 ? currentRatios[0] : currentRatios[1];
+                // Start new column (supports 2 or 3 columns)
+                const ratio = currentRatios[columnIndex] || currentRatios[currentRatios.length - 1];
                 htmlLines.push(`<div class="column" style="flex: ${ratio};">`);
                 stack.push('column');
                 continue;
             }
 
-            // Start Box
-            const boxMatch = trimmed.match(/^::: box *([a-z]*)/);
+            // Start Box (supports hyphenated class names like "dark-gold", "light-gray")
+            const boxMatch = trimmed.match(/^::: box *([a-z-]*)/);
             if (boxMatch) {
                 htmlLines.push(`<div class="box ${boxMatch[1]}">`);
                 stack.push('box');
@@ -177,8 +331,13 @@ function parseMarkdown(mdText) {
             } else if (trimmed.startsWith('> ')) {
                 htmlLines.push(`<blockquote>${trimmed.substring(2)}</blockquote>`);
             } else if (trimmed) {
-                let content = trimmed.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-                htmlLines.push(`<p>${content}</p>`);
+                // HTMLタグで始まる行はそのまま出力（<p>で囲まない）
+                if (trimmed.startsWith('<')) {
+                    htmlLines.push(trimmed);
+                } else {
+                    let content = trimmed.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+                    htmlLines.push(`<p>${content}</p>`);
+                }
             }
         }
 
@@ -203,17 +362,36 @@ async function run() {
     if (!inputPath || !outputPath) process.exit(1);
 
     const mdText = fs.readFileSync(inputPath, 'utf-8');
-    const slides = parseMarkdown(mdText);
+    const allSlides = parseMarkdown(mdText);
+
+    // 空のスライド（タイトルも内容もないもの）をフィルタリング
+    const slides = allSlides.filter(slide => slide.title || slide.html.trim());
+
     const css = generateCSS();
     const pptx = new pptxgen();
     pptx.layout = 'LAYOUT_16x9';
 
+    // 中間HTMLファイル用のslidesディレクトリを作成
+    const outputDir = path.dirname(outputPath);
+    const slidesDir = path.join(outputDir, 'slides');
+    if (!fs.existsSync(slidesDir)) {
+        fs.mkdirSync(slidesDir, { recursive: true });
+    }
+
+    // 古いHTMLファイルを削除
+    const existingFiles = fs.readdirSync(slidesDir).filter(f => f.endsWith('.html'));
+    existingFiles.forEach(f => fs.unlinkSync(path.join(slidesDir, f)));
+
     for (let i = 0; i < slides.length; i++) {
-        const tempHtmlPath = path.join(path.dirname(outputPath), `slide_${i+1}.html`);
+        // 中間HTMLファイルはslidesディレクトリに保存
+        const tempHtmlPath = path.join(slidesDir, `slide_${i+1}.html`);
         fs.writeFileSync(tempHtmlPath, createSlideHtml(slides[i], css));
         await html2pptx(tempHtmlPath, pptx);
     }
     await pptx.writeFile({ fileName: outputPath });
+    console.log(`✅ Generated: ${outputPath}`);
+    console.log(`   Slides: ${slides.length}`);
+    console.log(`   Intermediate HTML files saved in: ${slidesDir}`);
 }
 
 run().catch(err => { console.error(err); process.exit(1); });

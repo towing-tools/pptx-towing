@@ -3,15 +3,24 @@
 
 # Dependencies
 node_modules/
+.venv/
 
 # Environment
 .env
 
-# Output files
+# Output files (user-generated)
+output/
 test_output/
 
-# Notes (internal)
-変更すべき点.md
+# Development notes (internal)
+変更すべき点*.md
+geminiによるトライ.md
+
+# Screenshots (internal)
+image*.png
+
+# Large binary files
+sample_pptx.pptx
 
 # Template files (confidential - download from Google Drive)
 assets/*.pptx

@@ -60,10 +60,12 @@
   "components": {
     "box": {
       "background_color": "#ffffff",
-      "padding_pt": 10,
-      "margin_bottom_pt": 10,
+      "padding_pt": 14,
+      "margin_bottom_pt": 12,
       "border_left_width_pt": 5,
-      "shadow": "2px 2px 5px rgba(0,0,0,0.1)"
+      "shadow": "2px 2px 5px rgba(0,0,0,0.1)",
+      "inner_gap_pt": 8,
+      "accent_green": "#22C55E"
     }
   }
 }
