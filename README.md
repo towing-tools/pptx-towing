@@ -36,9 +36,9 @@ This tool leverages those capabilities to automatically generate PowerPoint pres
 
 2. AIに指示を出す:
    Give instructions to the AI:
-   「pptx-towing-v3/MANDATORY_GUIDE_FOR_PPTX_GENERATION.md を読んで、
+   「MANDATORY_GUIDE_FOR_PPTX_GENERATION.md を読んで、
     2026年度事業計画のスライドを作成してください」
-   "Read pptx-towing-v3/MANDATORY_GUIDE_FOR_PPTX_GENERATION.md and
+   "MANDATORY_GUIDE_FOR_PPTX_GENERATION.md and
     create slides for the 2026 business plan"
 
 3. AIが自動で:
