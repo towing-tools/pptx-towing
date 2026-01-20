@@ -13,6 +13,7 @@ output/
 test_output/
 
 # Development notes (internal)
+変更すべき点/
 変更すべき点*.md
 geminiによるトライ.md
 

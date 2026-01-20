@@ -1,13 +1,5 @@
 # MANDATORY GUIDE FOR PPTX GENERATION v3.0
-
-**重要**: このドキュメントは再構成されました。
-
 ---
-
-## 新しいドキュメント構造
-
-スライド生成のガイドは `docs/` ディレクトリに移動し、段階的に参照できるように分割されました。
-
 ### 必須参照（最初に読む）
 
 **📄 `docs/procedure.md`** - メイン手順書
@@ -144,18 +136,6 @@ python3 scripts/inject_slides.py \
 - ❌ 座標のハードコード
 - ❌ theme_config.jsonの無断改変
 - ❌ pptx-towing-v3直下への中間ファイル作成
-
----
-
-## 旧ガイドからの移行
-
-旧 `MANDATORY_GUIDE_FOR_PPTX_GENERATION.md` の内容は以下のように分割されました：
-
-- セクション1-2（原則、Config） → `docs/procedure.md`, `docs/config-reference.md`
-- セクション3-4（Markdown、テンプレート） → `docs/templates.md`
-- セクション5（コンテンツ設計） → `docs/content-guide.md`
-- セクション6（パイプライン） → `docs/procedure.md`
-- セクション7-9（チェックリスト、禁止事項、トラブル） → `docs/content-guide.md`, `docs/troubleshooting.md`
 
 ---
 
