@@ -22,7 +22,11 @@
  *   - Throws error if content overflows body (with overflow details)
  *
  * RETURNS:
- *   { slide, placeholders } where placeholders is an array of { id, x, y, w, h }
+ *   {
+ *     slide,
+ *     placeholders,     // Array of { id, x, y, w, h }
+ *     contentBounds     // { maxY, maxX, minY, minX } in inches - actual content boundaries
+ *   }
  */
 
 const { chromium } = require('playwright');
@@ -889,7 +893,26 @@ async function extractSlideData(page) {
       processed.add(el);
     });
 
-    return { background, elements, placeholders, errors };
+    // Calculate content bounds (max Y position of all elements)
+    let contentBounds = { maxY: 0, maxX: 0, minY: Infinity, minX: Infinity };
+
+    for (const el of elements) {
+      if (el.position) {
+        const bottomEdge = el.position.y + el.position.h;
+        const rightEdge = el.position.x + el.position.w;
+
+        if (bottomEdge > contentBounds.maxY) contentBounds.maxY = bottomEdge;
+        if (rightEdge > contentBounds.maxX) contentBounds.maxX = rightEdge;
+        if (el.position.y < contentBounds.minY) contentBounds.minY = el.position.y;
+        if (el.position.x < contentBounds.minX) contentBounds.minX = el.position.x;
+      }
+    }
+
+    // Handle case with no positioned elements
+    if (contentBounds.minY === Infinity) contentBounds.minY = 0;
+    if (contentBounds.minX === Infinity) contentBounds.minX = 0;
+
+    return { background, elements, placeholders, errors, contentBounds };
   });
 }
 
@@ -968,7 +991,11 @@ async function html2pptx(htmlFile, pres, options = {}) {
     await addBackground(slideData, targetSlide, tmpDir);
     addElements(slideData, targetSlide, pres);
 
-    return { slide: targetSlide, placeholders: slideData.placeholders };
+    return {
+      slide: targetSlide,
+      placeholders: slideData.placeholders,
+      contentBounds: slideData.contentBounds
+    };
   } catch (error) {
     if (!error.message.startsWith(htmlFile)) {
       throw new Error(`${htmlFile}: ${error.message}`);

@@ -16,6 +16,10 @@ test_output/
 変更すべき点/
 変更すべき点*.md
 geminiによるトライ.md
+リン可溶化試験.md
+
+# Internal Japanese markdown files (work in progress)
+# Add specific files here as needed
 
 # Screenshots (internal)
 image*.png

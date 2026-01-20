@@ -7,6 +7,146 @@ const html2pptx = require('./html2pptx');
 const CONFIG_PATH = path.resolve(__dirname, '../assets/theme_config.json');
 const CONFIG = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
 
+// ============================================
+// Table Processing Functions
+// ============================================
+
+/**
+ * Parse :::table json block and extract table data
+ * @param {string} tableContent - Content inside :::table json ... :::
+ * @returns {object} Parsed table data with headers and rows
+ */
+function parseTableBlock(tableContent) {
+    try {
+        const data = JSON.parse(tableContent);
+        return {
+            headers: data.headers || [],
+            rows: data.rows || [],
+            style: data.style || {},
+            title: data.title || null
+        };
+    } catch (e) {
+        console.error('Failed to parse table JSON:', e.message);
+        return null;
+    }
+}
+
+/**
+ * Convert table data to pptxgenjs table format
+ * @param {object} tableData - Parsed table data
+ * @param {object} config - Theme configuration
+ * @param {boolean} hasContentBefore - Whether there's content before the table
+ * @returns {object} { rows, options } for pptxgenjs addTable()
+ */
+function convertTableToPptx(tableData, config, hasContentBefore = false) {
+    const p = config.palette;
+    const t = config.typography;
+
+    // Default styles
+    const headerBg = tableData.style?.headerBg || 'AB955F';
+    const headerFg = tableData.style?.headerFg || 'F4F0E8';
+    const rowAltBg = tableData.style?.rowAltBg || 'F9F9F7';
+    const highlightBg = tableData.style?.highlightBg || '648651';
+    const highlightFg = tableData.style?.highlightFg || 'F4F0E8';
+
+    const pptxRows = [];
+
+    // Header row
+    if (tableData.headers && tableData.headers.length > 0) {
+        const headerRow = tableData.headers.map(header => ({
+            text: String(header),
+            options: {
+                fill: { color: headerBg },
+                color: headerFg,
+                bold: true,
+                align: 'center',
+                valign: 'middle'
+            }
+        }));
+        pptxRows.push(headerRow);
+    }
+
+    // Data rows
+    tableData.rows.forEach((row, rowIndex) => {
+        const isAltRow = rowIndex % 2 === 1;
+        const dataRow = row.map(cell => {
+            // Handle both string and object cell formats
+            if (typeof cell === 'object' && cell !== null) {
+                const isHighlight = cell.style === 'highlight';
+                return {
+                    text: String(cell.text || ''),
+                    options: {
+                        fill: { color: isHighlight ? highlightBg : (isAltRow ? rowAltBg : 'FFFFFF') },
+                        color: isHighlight ? highlightFg : '4A4A3E',
+                        bold: isHighlight,
+                        align: cell.align || 'left',
+                        valign: 'middle'
+                    }
+                };
+            } else {
+                return {
+                    text: String(cell),
+                    options: {
+                        fill: { color: isAltRow ? rowAltBg : 'FFFFFF' },
+                        color: '4A4A3E',
+                        align: 'left',
+                        valign: 'middle'
+                    }
+                };
+            }
+        });
+        pptxRows.push(dataRow);
+    });
+
+    // Calculate column widths (equal distribution)
+    const numCols = tableData.headers?.length || (tableData.rows[0]?.length || 1);
+    const tableWidth = 8.5; // inches (leaving margins)
+    const colWidth = tableWidth / numCols;
+    const colWidths = Array(numCols).fill(colWidth);
+
+    // Calculate Y position based on content
+    // - If explicit position specified in style, use it
+    // - If content exists before table, position below that content (using actual measured bounds)
+    // - Otherwise, position just below title
+
+    // Default position just below title area
+    const defaultY = 1.7; // inches
+    let yPosition = defaultY;
+
+    if (tableData.style?.y !== undefined) {
+        // Explicit position from style takes priority
+        yPosition = tableData.style.y;
+    } else if (hasContentBefore && tableData._actualContentMaxY) {
+        // Use actual content bounds from html2pptx rendering
+        // This is the accurate max Y position of all rendered content
+        const actualMaxY = tableData._actualContentMaxY;
+        const gap = 0.3; // Gap between content and table in inches
+
+        // Position table after actual content with gap
+        yPosition = actualMaxY + gap;
+
+        // Ensure minimum position (not too close to title)
+        yPosition = Math.max(yPosition, defaultY);
+
+        // Ensure maximum position (leave room for table)
+        // Slide height is 7.5" (16:9), table needs at least 1.5" space
+        yPosition = Math.min(yPosition, 5.5);
+    }
+
+    const options = {
+        x: 0.5,
+        y: yPosition,
+        w: tableWidth,
+        colW: colWidths,
+        fontSize: 11,
+        fontFace: t.font_family?.base?.split(',')[0]?.replace(/['"]/g, '').trim() || 'Noto Sans JP',
+        border: { type: 'solid', pt: 0.5, color: 'E5E5E5' },
+        margin: [5, 5, 5, 5]
+    };
+
+    return { rows: pptxRows, options };
+}
+
 function generateCSS() {
     const p = CONFIG.palette;
     const t = CONFIG.typography;
@@ -53,7 +193,7 @@ function generateCSS() {
         line-height: ${t.line_height.base};
         display: flex;
         flex-direction: column;
-        justify-content: center;
+        justify-content: flex-start;
         gap: 12pt;
     }
     
@@ -238,12 +378,84 @@ function parseMarkdown(mdText) {
         let title = '';
         const lines = cleanedSlideMd.split('\n');
         const htmlLines = [];
+        const tables = []; // Store table data for this slide
         const stack = []; // Track open containers: 'columns', 'column', 'box'
         let currentRatios = [1, 1];
         let columnIndex = 0; // Track which column we're in (0 = left, 1 = right)
 
+        // Track table block parsing
+        let inTableBlock = false;
+        let tableBlockContent = '';
+
         for (let i = 0; i < lines.length; i++) {
             let trimmed = lines[i].trim();
+
+            // Handle :::table json block
+            if (trimmed.startsWith('::: table') || trimmed.startsWith(':::table')) {
+                inTableBlock = true;
+                tableBlockContent = '';
+                continue;
+            }
+
+            // End of table block
+            if (inTableBlock && trimmed === ':::') {
+                inTableBlock = false;
+                const tableData = parseTableBlock(tableBlockContent);
+                if (tableData) {
+                    // Calculate estimated content height before this table
+                    // Different elements contribute different heights:
+                    // - box div: ~1.2 inches (includes padding and content)
+                    // - paragraph: ~0.3 inches
+                    // - header: ~0.4 inches
+                    // - list: ~0.2 inches per item
+                    let estimatedHeight = 0;
+                    let boxDepth = 0;
+
+                    for (const line of htmlLines) {
+                        const trimmedLine = line.trim();
+                        if (!trimmedLine || trimmedLine.startsWith('<!--')) continue;
+
+                        // Track box depth
+                        if (trimmedLine.startsWith('<div class="box')) {
+                            boxDepth++;
+                            if (boxDepth === 1) {
+                                estimatedHeight += 0.8; // Box container overhead
+                            }
+                        } else if (trimmedLine === '</div>' && boxDepth > 0) {
+                            boxDepth--;
+                        } else if (trimmedLine.startsWith('<p>')) {
+                            estimatedHeight += boxDepth > 0 ? 0.25 : 0.35; // Paragraphs inside boxes are more compact
+                        } else if (trimmedLine.startsWith('<h2>')) {
+                            estimatedHeight += 0.4;
+                        } else if (trimmedLine.startsWith('<h3>')) {
+                            estimatedHeight += 0.35;
+                        } else if (trimmedLine.startsWith('<li>')) {
+                            estimatedHeight += 0.25;
+                        } else if (trimmedLine.startsWith('<ul>')) {
+                            estimatedHeight += 0.1;
+                        } else if (trimmedLine.startsWith('<div class="columns">')) {
+                            // Columns layout - these are typically side-by-side
+                            // Don't add height, just track
+                        }
+                    }
+
+                    // Store position info with table data
+                    tableData._estimatedContentHeight = estimatedHeight;
+                    tableData._tableIndex = tables.length;
+
+                    tables.push(tableData);
+                    // Add placeholder in HTML (optional visual indicator)
+                    htmlLines.push(`<!-- TABLE_PLACEHOLDER_${tables.length - 1} -->`);
+                }
+                continue;
+            }
+
+            // Accumulate table block content
+            if (inTableBlock) {
+                tableBlockContent += lines[i] + '\n';
+                continue;
+            }
+
             if (!trimmed && !stack.includes('column')) continue;
 
             // h1: スライドタイトル
@@ -347,7 +559,7 @@ function parseMarkdown(mdText) {
             htmlLines.push('</div>');
         }
 
-        return { title, html: htmlLines.join('\n') };
+        return { title, html: htmlLines.join('\n'), tables };
     });
 }
 
@@ -365,7 +577,7 @@ async function run() {
     const allSlides = parseMarkdown(mdText);
 
     // 空のスライド（タイトルも内容もないもの）をフィルタリング
-    const slides = allSlides.filter(slide => slide.title || slide.html.trim());
+    const slides = allSlides.filter(slide => slide.title || slide.html.trim() || slide.tables.length > 0);
 
     const css = generateCSS();
     const pptx = new pptxgen();
@@ -382,15 +594,61 @@ async function run() {
     const existingFiles = fs.readdirSync(slidesDir).filter(f => f.endsWith('.html'));
     existingFiles.forEach(f => fs.unlinkSync(path.join(slidesDir, f)));
 
+    let tableCount = 0;
+
     for (let i = 0; i < slides.length; i++) {
+        const slideData = slides[i];
+
         // 中間HTMLファイルはslidesディレクトリに保存
         const tempHtmlPath = path.join(slidesDir, `slide_${i+1}.html`);
-        fs.writeFileSync(tempHtmlPath, createSlideHtml(slides[i], css));
-        await html2pptx(tempHtmlPath, pptx);
+        fs.writeFileSync(tempHtmlPath, createSlideHtml(slideData, css));
+
+        // html2pptxでスライドを作成（contentBoundsを取得）
+        const { slide, contentBounds } = await html2pptx(tempHtmlPath, pptx);
+
+        // テーブルがあれば追加
+        if (slideData.tables && slideData.tables.length > 0) {
+            let prevTableEndY = 0; // Track where previous table ends
+
+            // Use actual content bounds from html2pptx for accurate positioning
+            const actualContentMaxY = contentBounds?.maxY || 0;
+
+            for (let j = 0; j < slideData.tables.length; j++) {
+                const tableData = slideData.tables[j];
+
+                // Pass actual content height from html2pptx rendering
+                // This replaces the unreliable _estimatedContentHeight
+                const hasContentBefore = actualContentMaxY > 1.3; // More than just title area
+
+                // Override the estimated height with actual measured value
+                tableData._actualContentMaxY = actualContentMaxY;
+
+                const { rows, options } = convertTableToPptx(tableData, CONFIG, hasContentBefore);
+
+                // 複数テーブルがある場合は位置を調整
+                if (j > 0 && prevTableEndY > 0) {
+                    options.y = prevTableEndY + 0.3; // Position after previous table with gap
+                }
+
+                // Calculate where this table ends (for next table positioning)
+                const tableRows = tableData.rows.length + (tableData.headers?.length > 0 ? 1 : 0);
+                const rowHeight = 0.35;
+                prevTableEndY = options.y + (tableRows * rowHeight);
+
+                slide.addTable(rows, options);
+                tableCount++;
+                const contentInfo = tableData._actualContentMaxY
+                    ? `actualMaxY: ${tableData._actualContentMaxY.toFixed(2)}"`
+                    : 'no content above';
+                console.log(`   📊 Table added to slide ${i + 1} at y=${options.y.toFixed(2)}" (${contentInfo})`);
+            }
+        }
     }
+
     await pptx.writeFile({ fileName: outputPath });
     console.log(`✅ Generated: ${outputPath}`);
     console.log(`   Slides: ${slides.length}`);
+    console.log(`   Tables: ${tableCount}`);
     console.log(`   Intermediate HTML files saved in: ${slidesDir}`);
 }
 
