@@ -77,6 +77,7 @@ Install one of the following:
 
 インストール方法は、各ツールの公式ドキュメントを参照するか、佐久間に聞いてください。
 For installation instructions, refer to the official documentation or ask Sakuma.
+参考　→ https://geminicli.com/
 
 > **ポイント / Key Point**: エージェント型AIは、ローカル環境でプログラムの実行権限、ファイル・フォルダの作成権限を持っています。これがブラウザ版との大きな違いです。
 > AI agents have permission to run programs and create files/folders in your local environment. This is the major difference from browser-based AI.
