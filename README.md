@@ -90,11 +90,11 @@ For installation instructions, refer to the official documentation or ask Sakuma
 
 ```bash
 # macOS / Linux
-cd /path/to/pptx-towing-v3
+cd /path/to/pptx-towing
 gemini   # または claude / or claude
 
 # Windows (PowerShell)
-cd C:\path\to\pptx-towing-v3
+cd C:\path\to\pptx-towing
 gemini   # または claude / or claude
 ```
 
@@ -110,7 +110,7 @@ Slackの社内共有メッセージに添付されている `2026TOWINGtemplate.
 Download `2026TOWINGtemplate.pptx` from the Slack internal message and place it in the `assets/` folder:
 
 ```
-pptx-towing-v3/
+pptx-towing/
   └── assets/
       └── 2026TOWINGtemplate.pptx  ← ここに配置 / Place here
 ```
@@ -137,7 +137,7 @@ If not installed:
 ### Step 5: 依存パッケージのインストール / Install Dependencies
 
 ```bash
-cd pptx-towing-v3
+cd pptx-towing
 npm install
 ```
 
@@ -151,10 +151,10 @@ Gemini CLI や Claude Code を起動した状態で、以下のように指示:
 With Gemini CLI or Claude Code running, give instructions like:
 
 ```
-pptx-towing-v3/MANDATORY_GUIDE_FOR_PPTX_GENERATION.md を読んで、
+pptx-towing/MANDATORY_GUIDE_FOR_PPTX_GENERATION.md を読んで、
 〇〇についてのスライドを作成してください
 
-Read pptx-towing-v3/MANDATORY_GUIDE_FOR_PPTX_GENERATION.md and
+Read pptx-towing/MANDATORY_GUIDE_FOR_PPTX_GENERATION.md and
 create slides about 〇〇
 ```
 
@@ -203,7 +203,7 @@ You can also build manually without using AI.
 ## プロジェクト構成 / Project Structure
 
 ```
-pptx-towing-v3/
+pptx-towing/
 ├── assets/                    # テンプレートファイル / Template files
 │   └── 2026TOWINGtemplate.pptx
 ├── docs/                      # ドキュメント / Documentation
@@ -287,7 +287,7 @@ wsl --install
 
 # WSL内で操作 / Operations within WSL
 wsl
-cd /mnt/c/path/to/pptx-towing-v3
+cd /mnt/c/path/to/pptx-towing
 ./build.sh <project_name>
 ```
 
